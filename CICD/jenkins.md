@@ -99,7 +99,7 @@ Manage jenkins-->Security
 
 确保和savle通信的端口号开启而不是禁用（默认50000）
 
-![1701533557734](.\images\1701533557734.png)
+![1701533557734](./images/1701533557734.png)
 
 Dashboard--》Manage Jenkins--》Nodes
 
