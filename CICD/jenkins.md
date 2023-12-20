@@ -149,7 +149,7 @@ WORKSPACE  //工作目录
 
 安装Role-Based插件，安装后重启jenkins
 
-![1692280590688](.\images\1692280590688.png)
+![1692280590688](./images/1692280590688.png)
 
 重启后，选择 Manage Jenkins- -Configure Global Security--授权策略中选择。
 
