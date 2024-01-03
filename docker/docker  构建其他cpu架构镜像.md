@@ -1,6 +1,6 @@
 # docker  构建其他cpu架构镜像
 
-国产化服务器提供的多数是arm版本的linux环境
+国产化服务器提供的多数是arm cpu架构的linux环境
 
 ## docker 启动build 构建多cpu架构 镜像
 
