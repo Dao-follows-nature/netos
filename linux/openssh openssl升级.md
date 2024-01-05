@@ -70,6 +70,7 @@ Ubuntu 依赖安装 apt-get install gcc make
 1 、Openssl  安装
 
 ```shell
+centos：
 yum -y install openssl-devel pcre-devel  pam-devel  gcc-c++ zlib-devel perl
 
 tar  -zxvf openssl-1.1.1g.tar.gz
@@ -102,7 +103,7 @@ Ubuntu： mv /usr/bin/openssl /usr/bin/openssl.bak
 
 ln -sf /usr/local/openssl/bin/openssl /usr/bin/openssl     #新版本制作软链接
 
-Debian cd /usr/bin/
+cd /usr/bin/
 
 cp /usr/local/openssl/bin/openssl ./
 
@@ -154,6 +155,8 @@ cp -r /etc/ssh /tmp/ssh_bak
 cp /etc/init.d/ssh /tmp/ssh_bak/init.d
 
 service sshd stop
+
+dpkg --purge openssh-server  #卸载
 
 apt-get install build-essential libtool automake Zlib*
 
