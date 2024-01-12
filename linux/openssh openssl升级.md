@@ -64,7 +64,12 @@ https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-9.5p1.tar.gz
 centos 和ubuntu 按下面操作
 
 ```shell
+<<<<<<< HEAD
 yum -y install openssl-devel pcre-devel  pam-devel  gcc-c++ zlib-devel perl #Ubuntu 依赖安装 apt-get install gcc make 
+=======
+centos：
+yum -y install openssl-devel pcre-devel  pam-devel  gcc-c++ zlib-devel perl
+>>>>>>> bd2adab771bf519e3d728c049b38b82ccbd41616
 
 tar  -zxvf openssl-3.2.0.tar.gz
 
@@ -92,7 +97,13 @@ mv /bin/openssl /usr/bin/openssl.old   #将旧版本openssl移除
 
 
 
+<<<<<<< HEAD
 ln -sf /usr/local/openssl/bin/openssl /usr/bin/openssl     #新版本制作软链接，或一下cp过去即可
+=======
+ln -sf /usr/local/openssl/bin/openssl /usr/bin/openssl     #新版本制作软链接
+
+cd /usr/bin/
+>>>>>>> bd2adab771bf519e3d728c049b38b82ccbd41616
 
 cd /usr/bin/
 cp /usr/local/openssl/bin/openssl ./
@@ -164,6 +175,12 @@ cp -r /etc/ssh /tmp/ssh_bak
 
 service sshd stop
 
+<<<<<<< HEAD
+=======
+dpkg --purge openssh-server  #卸载
+
+apt-get install build-essential libtool automake Zlib*
+>>>>>>> bd2adab771bf519e3d728c049b38b82ccbd41616
 
 cd ../openssh-9.5p1
 
