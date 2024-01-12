@@ -47,45 +47,38 @@ mv /etc/securetty.bak /etc/securetty
 
 Zlib 最新版地址 
 
-https://nchc.dl.sourceforge.net/project/libpng/zlib/1.2.11/zlib-1.2.11.tar.gz
+ http://www.zlib.net/
 
-Openssl 地址  wget https://www.openssl.org/source/openssl-1.1.1g.tar.gz
+Openssl 地址  wget https://www.openssl.org/source/openssl-3.2.0.tar.gz
 
 Openssh地址
 
-https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-8.8p1.tar.gz
+https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-9.5p1.tar.gz
 
  
 
-***\*先安装openssl\**** ***\*， openssh\**** ***\*， zlib\****
-
-
-
-```shell
-Ubuntu 依赖安装 apt-get install gcc make
-```
-
- 
+***\*安装顺序openssl\**** ***\*， openssh\**** ***\*， zlib\****
 
 1 、Openssl  安装
 
+centos 和ubuntu 按下面操作
+
 ```shell
-yum -y install openssl-devel pcre-devel  pam-devel  gcc-c++ zlib-devel perl
+yum -y install openssl-devel pcre-devel  pam-devel  gcc-c++ zlib-devel perl #Ubuntu 依赖安装 apt-get install gcc make 
 
-tar  -zxvf openssl-1.1.1g.tar.gz
+tar  -zxvf openssl-3.2.0.tar.gz
 
-cd openssl-1.1.1g
+cd openssl-3.2.0
  
 ./config --prefix=/usr/local/openssl
 
 make && make install
 
- 
 
 ldd /usr/local/openssl/bin/openssl   #检查函数库
 
 
-echo "/usr/local/openssl/lib" >> /etc/ld.so.conf  #添加所缺函数库
+echo "/usr/local/openssl/lib64" >> /etc/ld.so.conf  #添加所缺函数库
 
 
 ldconfig -v    #更新函数库
@@ -98,25 +91,41 @@ which openssl      #查看旧版本openssl命令在哪里
 mv /bin/openssl /usr/bin/openssl.old   #将旧版本openssl移除
 
 
-Ubuntu： mv /usr/bin/openssl /usr/bin/openssl.bak
 
-ln -sf /usr/local/openssl/bin/openssl /usr/bin/openssl     #新版本制作软链接
+ln -sf /usr/local/openssl/bin/openssl /usr/bin/openssl     #新版本制作软链接，或一下cp过去即可
 
-Debian cd /usr/bin/
-
+cd /usr/bin/
 cp /usr/local/openssl/bin/openssl ./
 
 openssl version     最后查看版本，更新完毕
 ```
 
-2 、openssh  安装
+报错：
 
- 
+/usr/local/openssl/bin/openssl: /lib/x86_64-linux-gnu/libssl.so.3: version `OPENSSL_3.2.0' not found (required by /usr/local/openssl/bin/openssl)
+/usr/local/openssl/bin/openssl: /lib/x86_64-linux-gnu/libcrypto.so.3: version `OPENSSL_3.0.9' not found (required by /usr/local/openssl/bin/openssl)
+/usr/local/openssl/bin/openssl: /lib/x86_64-linux-gnu/libcrypto.so.3: version `OPENSSL_3.2.0' not found (required by /usr/local/openssl/bin/openssl)
+
+解决方法：
 
 ```shell
-tar -zxvf openssh-8.8p1.tar.gz 
-cd openssh-8.8p1
-./configure --prefix=/usr --sysconfdir=/etc/ssh --with-zlib --without-openssl-header-check --with-ssl-dir=/usr/local/openssl/  --with-privsep-path=/var/lib/sshd
+vim /etc/ld.so.conf.d/x86_64-linux-gnu.conf #将里面的内容注释
+#/usr/local/lib/x86_64-linux-gnu 
+#/lib/x86_64-linux-gnu
+#/usr/lib/x86_64-linux-gnu
+
+ldconfig -v    #更新函数库
+```
+
+2 、openssh  安装
+
+```shell
+centos 安装:
+tar -zxvf  openssh-9.5p1.tar.gz
+
+cd openssh-9.5p1
+
+./configure --prefix=/usr/local/ssh --sysconfdir=/etc/ssh --with-zlib --without-openssl-header-check --with-ssl-dir=/usr/local/openssl/  --with-privsep-path=/var/lib/sshd
 
 Make
 
@@ -128,86 +137,94 @@ cp -p contrib/redhat/sshd.init /etc/init.d/sshd
 
 chmod +x /etc/init.d/sshd
 
-vim /etc/ssh/sshd_config	PermitRootLogin yes
+vim /etc/ssh/sshd_config	
+                 PermitRootLogin yes    #开启root登录 
 
-​                PasswordAuthentication yes
+​                PasswordAuthentication yes #远程登录用密码来验证
 
-​                PubkeyAuthentication yes
+​                PubkeyAuthentication yes #允许通过密钥对登录
 
  
 setenforce 0
 
 Sshd -t
 
-Chomd 600 /etc/ssh/ssh_host_ecdsa_key 等
+Chomd 600 /etc/ssh/ssh_host_ecdsa_key #如报错请把其他文件权限也chmod 600 即可
 
 ssh -V
 
 
-Ubuntu  安装：
-apt-get install libpam0g-dev
+Ubuntu  解压按上面操作即可 安装：
+apt-get install libpam0g-dev build-essential libtool automake Zlib*
 
 mkdir /tmp/ssh_bak/init.d -p
 
 cp -r /etc/ssh /tmp/ssh_bak
 
-cp /etc/init.d/ssh /tmp/ssh_bak/init.d
 
 service sshd stop
 
-apt-get install build-essential libtool automake Zlib*
 
-cd ../openssh-8.8p1
+cd ../openssh-9.5p1
 
-./opt/openssh-8.8p1/configure --prefix=/usr/local/ssh --sysconfdir=/etc/ssh --with-ssl-dir=/usr/local/openssl/ --without-openssl-header-check
+./opt/openssh-9.5p1/configure --prefix=/usr/local/ssh --sysconfdir=/etc/ssh --with-ssl-dir=/usr/local/openssl/ --without-openssl-header-check
 
- make
+make
+
+apt-get remove openssh-server openssh-client -y #卸载
 
 make install
 
-echo "sshd:x:74:74::/var/run/sshd:/sbin/nologin" >>/etc/passwd
 
-echo "export LANG=zh_CN.UTF-8" >>/etc/profile
-
-cp /usr/local/ssh/bin/* /usr/bin/
+cp  /usr/local/openssh/bin/* /usr/bin/
 
 cp /usr/local/ssh/sbin/sshd /usr/bin/sshd
 
-mv /etc/init.d/ssh.old /etc/init.d/ssh
 
 ln -s /usr/local/ssh/sbin/sshd /usr/sbin/sshd
 
+systemctl unmask ssh
+
 systemctl enable ssh
+
+/lib/systemd/systemd-sysv-install enable ssh
 
 systemctl restart ssh
 
 ssh -V
 
- 
+```
 
 报错：Failed to start ssh.service: Unit ssh.service is masked.
 
- 解决方法：systemctl unmask ssh
+解决方法：
+
+```
+ #原因可能是之前使用apt-get 安装过ssh，服务被标记过
+systemctl unmask ssh
 
 Removed /etc/systemd/system/ssh.service.
-
- #原因可能是之前使用apt-get 安装过ssh，服务被标记过
 ```
 
+问题：sftp 无法使用
 
+解决办法：
+
+```
+vim /etc/ssh/sshd_config
+Subsystem       sftp    /usr/local/openssh/libexec/sftp-server  #更改为你的安装路径
+```
 
 3、zlib  安装
 
+centos 和ubuntu 按下面操作，ubuntu 没卸载
+
 ```shell
-yum install  -y gcc make
+yum install  -y gcc make #apt-get install gcc make
 
-mv zlib-1.2.11.tar.gz  /opt/
+tar -zxvf zlib-1.3.tar.gz
 
-cd /opt/
-
-tar -zxvf zlib-1.2.11.tar.gz 
-
-cd zlib-1.2.11
+cd zlib-1.3.tar.gz
 
 ./configure --libdir=/lib64/ 
 
