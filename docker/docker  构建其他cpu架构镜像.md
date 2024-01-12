@@ -50,6 +50,12 @@ mybuilder *  docker-container
 default      docker                                        
   default    default                     running  v0.11.6  linux/amd64, linux/amd64/v2, linux/amd64/v3, linux/386
 
-docker buildx build --builder mybuilder --platform linux/arm64/v3 -t test:armv3 --output type=docker . #构建 
+docker buildx build --builder mybuilder --platform linux/arm64/v3 -t test:armv3 --output type=docker . #构建
+
+--platform #指定构建的目标架构，可以指定多个
+--builder # 指定刚刚创建的构建器
+-t #指定构建的镜像名称
+--output type=docker：指定输出类型为 Docker 镜像。这表示构建过程将生成一个 Docker 镜像，可以在本地 Docker 守护进程中使用。
+
 ```
 
