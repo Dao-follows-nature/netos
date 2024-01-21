@@ -26,10 +26,17 @@
 
 - 确保保持内存一致，（如果无法保证，从节点可以大于主节点，但是主节点不能大于从节点）
 
-master
+master（只是其中重要的部分）
 
 ```
 #redis.conf
+#开启RBD快照
+save 3600 1
+save 300 100
+save 60 10000
+
+bind 0.0.0.0
+dbfilename  master.rdb #RDB 快照文件的名称
 
 requirepass 123456  #配置密码  
 repl-backlog-size 1mb  #设置复制缓冲区大小。backlog是一个缓冲区，这是一个环形复制缓冲区，用来保存最新复制的命令。当副本断开连接一段时间时，它会累积副本数据，因此当副本想要再次连接时，通常不需要完全重新同步，但部分重新同步就足够了，只需传递副本在断开连接时丢失的部分数据。复制缓冲区越大，复制副本能够承受断开连接的时间就越长，以后能够执行部分重新同步。只有在至少连接了一个复制副本的情况下，才会分配缓冲区，没有复制副本的一段时间，内存会被释放出来，默认1mb 
@@ -46,15 +53,19 @@ min-replicas-max-lag 10 #设置至少有上面数量的slave延迟时间大于�
 
 repl-disable-tcp-nodelay no #TCP 的 TCP_NODELAY 属性，决定数据的发送时机。配置关闭：主节点产生的数据无论大小都会及时的发送给从节点。redis默认关闭此配置，以保障较小的主从延迟。当然，这需要主从间保持较好的网络状况。
 配置打开：主节点会合并较小的TCP数据包以节省宽带，默认发送时间间隔由linux内核设置决定，默认一般40ms。虽然这样大大增加了主从之间的延迟，但是对于网络状况达不到条件或者对主从延迟不敏感的情况比较适用。
-
 ```
 
-savle
+slave（只是其中重要的部分）
 
 ```
 #redis.conf
 replicaof <masterip> <masterport> #连接那个主库 和主库端口
 masterauth <masterpassword>  # 主库密码
+save 3600 1
+save 300 100
+save 60 10000
+
+dbfilename slave.rdb
 ```
 
 
@@ -154,5 +165,268 @@ repl_backlog_histlen:823 #复制 backlog 当前的历史长度（以字节为单
 
 # redis  哨兵（Sentinel）
 
+在上面的主从复制中，如果主节点挂了，在想要恢复的话，需要人工手动恢复，非常麻烦，哨兵的出现解决了这种麻烦的人工操作
+
+- 故障检测和自动故障转移
+- 配置文件更新和故障节点恢复后的主从同步
+- 新主节点选举
+
+哨兵节点主要负责三件事情：**监控、选主、通知**。
+
+架构图
 
 
+
+![image-20240119221940953](./images/image-20240119221940953.png)
+
+**主观下线**
+
+主观下线适用于所有 主节点 和 从节点。如果在 （配置参数`down-after-milliseconds` 毫秒内），`Sentinel` 没有收到 目标节点 的有效回复，则会判定 该节点 为 **主观下线**。
+
+**客观下线**
+
+客观下线只适用于主节点。哨兵节点之间通过相互通信和协调来判断 Redis 实例的健康状态。当一个哨兵节点主观地认为某个 Redis 实例下线时，它会向其他哨兵节点发送通知，并询问它们对该实例的状态如何。
+
+其他哨兵节点会根据自身的监测结果和配置规则，对该实例进行独立的检查和判断。如果多个哨兵节点在一定的时间间隔内都主观地认为该实例下线，就会达成共识，形成客观下线的状态。
+
+## 哨兵部署
+
+|      IP       |                 操作系统                 |    服务器配置     |
+| :-----------: | :--------------------------------------: | :---------------: |
+| 192.168.0.110 | ubuntu-20.04.5-LTS（redis-6.12.4）master | 内存：4G CPU：1核 |
+| 192.168.0.107 |      rocky9.2（reids-6.12.4）slave1      | 内存：4G CPU：1核 |
+| 192.168.0.105 |      rocky9.2（reids-6.12.4）slave2      | 内存：4G CPU：1核 |
+
+配置主从
+
+master（只是其中重要的部分）
+
+```
+bind 0.0.0.0
+#开启RBD快照
+save 3600 1
+save 300 100
+save 60 10000
+#RDB 快照文件的名称
+dbfilename master.rdb
+requirepass 123456
+masterauth 123456 #主节点也要开启，如果主节点挂了，需要和新主同步
+```
+
+slave1（只是其中重要的部分）
+
+```
+bind 0.0.0.0
+replicaof 192.168.0.110 6379
+masterauth 123456
+requirepass 123456
+#开启RBD快照
+save 3600 1
+save 300 100
+save 60 10000
+#RDB 快照文件的名称
+dbfilename slave1.rdb
+```
+
+slave2（只是其中重要的部分）
+
+```
+bind 0.0.0.0
+replicaof 192.168.0.110 6379
+masterauth 123456
+requirepass 123456
+#开启RBD快照
+save 3600 1
+save 300 100
+save 60 10000
+#RDB 快照文件的名称
+dbfilename slave2.rdb
+```
+
+配置好后启动reids ，通过redis-cli 查看主从
+
+```
+# Replication
+role:master
+connected_slaves:2
+slave0:ip=192.168.0.107,port=6379,state=online,offset=2240,lag=1
+slave1:ip=192.168.0.105,port=6379,state=online,offset=2240,lag=1
+master_failover_state:no-failover
+master_replid:cd181715fce675343a1749a995c8e86ce8d45923
+master_replid2:0000000000000000000000000000000000000000
+master_repl_offset:2240
+second_repl_offset:-1
+repl_backlog_active:1
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:1
+repl_backlog_histlen:2240
+
+```
+
+配置哨兵
+
+sentinel官方配置文档：https://redis.io/docs/management/sentinel/
+
+master
+
+sentinel.conf（这个文件一般在编译完成后reids目录就有，只需要copy更改就可以了只是其中重要的部分）
+
+```
+#sentinel.conf
+
+bind 0.0.0.0 #允许所有ip访问
+
+port 26379 # 监听端口
+
+daemonize yes # 守护进程的形式运行
+
+pidfile /var/run/redis-sentinel.pid # 进程PID
+
+logfile "/opt/redis/logs/sentinel.log" # 日志文件
+
+dir /opt/redis/data/ # 工作目录
+
+sentinel monitor mymaster 192.168.0.110 6379 2 # 这里定义主库的IP和端口，还有最后的2表示要达到2台sentinel认同才认为主库已经挂掉 mymaster 集群名称可更改但3个sentinel 要相同
+
+sentinel down-after-milliseconds mymaster 30000 # 主库在30000毫秒（即30秒）内没有反应就认为主库挂掉（即主观失效）
+
+sentinel auth-pass mymaster 123456 #要和上面的集群名称一致，配置redis 主从复制的密码，
+
+acllog-max-len 128
+
+sentinel parallel-syncs mymaster 1 #故障转移后，可以向新master同步数据的slave数量，数字越小总同步时间越长，但可以减轻新master的负载压力
+sentinel failover-timeout mymaster 180000 #所有slaves指向新的master所需的超时时间，默认 180秒 ，默认单位是毫秒
+sentinel deny-scripts-reconfig yes #禁止修改脚本
+```
+
+slave1
+
+```
+#sentinel.conf
+
+bind 0.0.0.0 #允许所有ip访问
+
+port 26379 # 监听端口
+
+daemonize yes # 守护进程的形式运行
+
+pidfile /var/run/redis-sentinel.pid # 进程PID
+
+logfile "/opt/redis/logs/sentinel.log" # 日志文件
+
+dir /opt/redis/data/ # 工作目录
+
+sentinel monitor mymaster 192.168.0.110 6379 2 # 这里定义主库的IP和端口，还有最后的2表示要达到2台sentinel认同才认为主库已经挂掉 mymaster 集群名称可更改但3个sentinel 要相同
+
+sentinel down-after-milliseconds mymaster 30000 # 主库在30000毫秒（即30秒）内没有反应就认为主库挂掉（即主观失效）
+
+sentinel auth-pass mymaster 123456 #要和上面的集群名称一致，配置redis 主从复制的密码，
+
+acllog-max-len 128
+
+sentinel parallel-syncs mymaster 1 #故障转移后，可以向新master同步数据的slave数量，数字越小总同步时间越长，但可以减轻新master的负载压力
+sentinel failover-timeout mymaster 180000 #所有slaves指向新的master所需的超时时间，默认 180秒 ，默认单位是毫秒
+sentinel deny-scripts-reconfig yes #禁止修改脚本
+```
+
+slave2
+
+```
+#sentinel.conf
+
+bind 0.0.0.0 #允许所有ip访问
+
+port 26379 # 监听端口
+
+daemonize yes # 守护进程的形式运行
+
+pidfile /var/run/redis-sentinel.pid # 进程PID
+
+logfile "/opt/redis/logs/sentinel.log" # 日志文件
+
+dir /opt/redis/data/ # 工作目录
+
+sentinel monitor mymaster 192.168.0.110 6379 2 # 这里定义主库的IP和端口，还有最后的2表示要达到2台sentinel认同才认为主库已经挂掉 mymaster 集群名称可更改但3个sentinel 要相同
+
+sentinel down-after-milliseconds mymaster 30000 # 主库在30000毫秒（即30秒）内没有反应就认为主库挂掉（即主观失效）
+
+sentinel auth-pass mymaster 123456 #要和上面的集群名称一致，配置redis 主从复制的密码，
+
+acllog-max-len 128
+
+sentinel parallel-syncs mymaster 1 #故障转移后，可以向新master同步数据的slave数量，数字越小总同步时间越长，但可以减轻新master的负载压力
+sentinel failover-timeout mymaster 180000 #所有slaves指向新的master所需的超时时间，默认 180秒 ，默认单位是毫秒
+sentinel deny-scripts-reconfig yes #禁止修改脚本
+```
+
+启动
+
+```
+./bin/redis-sentinel ./etc/sentinel.conf &
+```
+
+启动之后每个sentinel.conf都会在末尾有
+
+```
+protected-mode no
+user default on nopass sanitize-payload ~* &* +@all
+sentinel myid 999f9fadc5e669d250f21784c6c47d385bf4c572 #每个sentinel的id必须不同
+sentinel config-epoch mymaster 0
+sentinel leader-epoch mymaster 0
+sentinel current-epoch 0
+sentinel known-replica mymaster 192.168.0.105 6379
+sentinel known-replica mymaster 192.168.0.107 6379
+sentinel known-sentinel mymaster 192.168.0.105 26379 49d99518a6fbff21485287bec34e181aa60cbc5f
+sentinel known-sentinel mymaster 192.168.0.107 26379 d90d1e650755fa7d4f9face391614a2f20955cad
+```
+
+查看哨兵
+
+```
+127.0.0.1:26379> info sentinel #查看哨兵
+# Sentinel
+sentinel_masters:1
+sentinel_tilt:0
+sentinel_running_scripts:0
+sentinel_scripts_queue_length:0
+sentinel_simulate_failure_flags:0
+master0:name=mymaster,status=ok,address=192.168.0.110:6379,slaves=2,sentinels=3
+```
+
+## 哨兵是如何选新主的
+
+哨兵选择新主过程可以分为两步 **筛选+打分**，在多个从库 中，先按照一定的筛选条件，把不符合条件的从库去掉。然后，我们再按照一定的规则， 给剩下的从库逐个打分，将得分最高的从库选为新主库
+
+筛选的条件主要是：
+
+1. 检测该从库是否在线
+2. 判断从库之前的网络连接状态
+
+从库打分过程
+
+第一轮：优先级最高的从库得分高。
+
+手动配置优先级
+
+```
+#redis.conf
+replica-priority 100 #值越小，优先级越高，优先成为新主
+```
+
+第二轮：和旧主库同步程度最接近的从库得分高。
+
+查看每个从库 的 slave_repl_offset这个值，和旧主的 master_repl_offset最接近，如果越接近，分数越高
+
+第三轮：ID 号小的从库得分高。
+
+每个实例都会有一个 ID，这个 ID 就类似于这里的从库的编号。目前，Redis 在选主库 时，有一个默认的规定：在优先级和复制进度都相同的情况下，ID 号最小的从库得分最 高，会被选为新主库。
+
+## 客户端连接
+
+客户端连接的是sentinel
+
+java：https://github.com/oyhk/redis-sentinel-java
+
+go：https://redis.uptrace.dev/zh/guide/go-redis-sentinel.html
+
+python： https://github.com/alisaifee/coredis
