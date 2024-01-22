@@ -423,7 +423,7 @@ replica-priority 100 #值越小，优先级越高，优先成为新主
 
 ## 客户端连接
 
-客户端连接的是sentinel
+客户端连接的是sentinel地址
 
 java：https://github.com/oyhk/redis-sentinel-java
 
