@@ -263,3 +263,30 @@ kube-scheduler 调度分为两个阶段，predicate和priority
 - predicate：过滤不符合条件的节点，节点预选
 - priority: 优先级排序，选择优先级最高的节点，节点优先级排序
 
+
+
+![img](./images/scheduling-framework-extensions.png)
+
+调度过程：
+
+获取未调度pod：Scheduler  向apiserver watch 监听pod的更新，当找到那些状态为 Pending 且未指定 `nodeName` 的 Pod。Scheduler 会将它们加入到内部的调度队列中。
+
+调度队列：在调度队列中会检测pod是否准备好进行调度，如果没准备要会进入一个队列循环
+
+队列排序：队列可以基于 Pod 的优先级、创建时间等进行排序。
+
+过滤节点：过滤不足的node节点，筛选出能够满足pod需求的节点
+
+打分：为每个节点打分，以确定哪个节点最适合该 Pod。基于打分，Scheduler 会选择得分最高的节点作为 Pod 运行的位置。
+
+绑定：Scheduler 通过 API Server将pod的`nodeName`字段写入etcd，将 Pod 绑定到选定的节点上。
+
+
+
+调度队列详解：https://github.com/kubernetes/community/blob/f03b6d5692bd979f07dd472e7b6836b2dad0fd9b/contributors/devel/sig-scheduling/scheduler_queues.md#scheduling-queue-in-kube-scheduler
+
+
+
+
+
+
