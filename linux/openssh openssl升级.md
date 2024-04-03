@@ -64,12 +64,11 @@ https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-9.5p1.tar.gz
 centos 和ubuntu 按下面操作
 
 ```shell
-<<<<<<< HEAD
 yum -y install openssl-devel pcre-devel  pam-devel  gcc-c++ zlib-devel perl #Ubuntu 依赖安装 apt-get install gcc make 
-=======
+
 centos：
 yum -y install openssl-devel pcre-devel  pam-devel  gcc-c++ zlib-devel perl
->>>>>>> bd2adab771bf519e3d728c049b38b82ccbd41616
+
 
 tar  -zxvf openssl-3.2.0.tar.gz
 
@@ -157,12 +156,33 @@ vim /etc/ssh/sshd_config
 
  
 setenforce 0
+cp  /usr/local/openssh/bin/* /usr/bin/
 
-Sshd -t
+cp /usr/local/ssh/sbin/sshd /usr/bin/sshd
 
-Chomd 600 /etc/ssh/ssh_host_ecdsa_key #如报错请把其他文件权限也chmod 600 即可
+
+ln -s /usr/local/ssh/sbin/sshd /usr/sbin/sshd
+
+sshd -t #检测配置文件
+
+#报错，可能会遇到
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+12月 28 18:41:42 localhost.localdomain sshd[88555]: Permissions 0640 for '/etc/ssh/ssh_host_ed25519_key' are too open.
+
+解决
+#如报错请把其他文件权限也chmod 600 即可
+chmod 600 /etc/ssh/ssh_host_ed25519_key
+
 
 ssh -V
+
+systemctl unmask sshd 
+
+systemctl status sshd
+
+systemctl enable sshd
+
+systemctl start sshd
 
 
 Ubuntu  解压按上面操作即可 安装：
@@ -180,7 +200,7 @@ service sshd stop
 dpkg --purge openssh-server  #卸载
 
 apt-get install build-essential libtool automake Zlib*
->>>>>>> bd2adab771bf519e3d728c049b38b82ccbd41616
+
 
 cd ../openssh-9.5p1
 
