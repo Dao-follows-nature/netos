@@ -27,7 +27,7 @@ jhsdb jmap --heap --pid {PID} # java 11
 {PID} 为java 得进程iD号，最后获得的进程id 是16进制的
 
 ```shell
-ps -mp {PID} -o THREAD,tid | awk 'NR!=1 && NR!=2 { printf "%s %x\n",$2,$8 }' | sort -rn | head -5
+ps -mp {PID} -o THREAD,tid | awk 'NR!=1 && NR!=2 { printf "%s %d\n",$2,$8 }' | sort -rn | head -5
 ```
 
 抓取线程日志信息
